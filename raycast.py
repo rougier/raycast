@@ -104,11 +104,14 @@ class Camera:
         """Build a new camera with a fov (field of view) and a given resolution"""
         
         self.fov = fov
-        self.resolution = resolution    
+        self.resolution = resolution
+        self.depths = np.zeros(resolution)
         self.rays = np.zeros((resolution,2,2))
+        self.cells = np.zeros((resolution,2), dtype=int)
         self.framebuffer = np.zeros((resolution,resolution,3), dtype=np.ubyte)
 
     def render(self, position, direction, maze, cmap, outline=True):
+
         """Update the framebuffer with the current view and records
         the rays that have been used (for debug)"""
         
@@ -119,16 +122,17 @@ class Camera:
 
         # Cast each ray and write them in the framebuffer
         angles = direction + np.radians(np.linspace(+self.fov/2,-self.fov/2, n, endpoint=True))
-        cell_prev = None
 
+        cell_prev = None
         start = position
         for i, angle in enumerate(angles):
             end, cell, steps = raycast(start, angle, maze)
-
-            # Only useful if one wants to draw the rays in a top view
-            self.rays[i] = start, end
-
             d = math.sqrt((start[0]-end[0])**2 + (start[1]-end[1])**2)
+
+            self.rays[i] = start, end
+            self.depths[i] = d
+            self.cells[i] = cell
+            
             # We should use a fovy instead of hardcoding height
             height = 0.09/(d*math.cos(direction - angle))
 
@@ -137,16 +141,13 @@ class Camera:
             depth = abs(d) - abs(d) % (1/n)
             self.framebuffer[ymin:ymax,i] = cmap[maze[cell]]*(1 - depth)
 
+            
             # Wall outline
             if outline:
-                if cell_prev is not None and cell != cell_prev:
+                if i > 0 and np.any(self.cells[i-1] != self.cells[i]):
                     self.framebuffer[ymin:ymax,i] = self.framebuffer[ymin:ymax,i]*0.75
                 self.framebuffer[ymax-1:ymax,i] = self.framebuffer[ymax-1,i]*0.75 
                 self.framebuffer[ymin:ymin+1,i] = self.framebuffer[ymin,  i]*0.75
-
-            # Record current cell. This is used to detect vertical outline
-            cell_prev = cell
-
 
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -201,7 +202,7 @@ if __name__ == "__main__":
 
     def update(frame=0):
         global position, direction
-        direction += math.radians(1.0)
+        direction += math.radians(0.5)
         camera.render(position, direction, maze, cmap, outline=True)
         rays.set_segments(camera.rays)
         framebuffer.set_data(camera.framebuffer)
