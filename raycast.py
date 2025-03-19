@@ -120,7 +120,7 @@ class Camera:
         self.cells = np.zeros((resolution,2), dtype=int)
         self.framebuffer = np.zeros((resolution,resolution,3), dtype=np.ubyte)
 
-    def render(self, position, direction, maze, cmap, outline=True):
+    def render(self, position, direction, maze, cmap, outline=True, lighting=True):
 
         """Update the framebuffer with the current view and records
         the rays that have been used (for debug)"""
@@ -134,6 +134,7 @@ class Camera:
         angles = direction + np.radians(np.linspace(+self.fov/2,-self.fov/2, n, endpoint=True))
 
         cell_prev = None
+        face_prev = None
         start = position
         for i, angle in enumerate(angles):
             end, cell, face, steps = raycast(start, angle, maze)
@@ -152,15 +153,20 @@ class Camera:
             self.framebuffer[ymin:ymax,i] = cmap[maze[cell]]*(1 - depth)
 
             # Basic lighting
-            if face == (-1,0):
+            if lighting and face == (-1,0):
                 self.framebuffer[ymin:ymax,i] = 0.75 * self.framebuffer[ymin:ymax,i]
             
             # Wall outline
             if outline:
-                if i > 0 and np.any(self.cells[i-1] != self.cells[i]):
-                    self.framebuffer[ymin:ymax,i] = self.framebuffer[ymin:ymax,i]*0.75
+                if i > 0:
+                    if np.any(self.cells[i-1] != self.cells[i]):
+                        self.framebuffer[ymin:ymax,i] = self.framebuffer[ymin:ymax,i]*0.75
+                    if np.all(self.cells[i-1] == self.cells[i]) and face != face_prev:
+                        self.framebuffer[ymin:ymax,i] = self.framebuffer[ymin:ymax,i]*0.75
                 self.framebuffer[ymax-1:ymax,i] = self.framebuffer[ymax-1,i]*0.75 
                 self.framebuffer[ymin:ymin+1,i] = self.framebuffer[ymin,  i]*0.75
+
+            face_prev = face
 
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
