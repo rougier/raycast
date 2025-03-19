@@ -42,6 +42,11 @@ def raycast(origin, direction, maze):
     
       End point of the ray in grid coordinates or None if the ray
       exits the maze without hitting a wall
+
+
+    face : tuple
+
+      Face that was hit: (1,0), (-1,0), (0,1) or (0, -1)
     
     steps: int
 
@@ -60,6 +65,8 @@ def raycast(origin, direction, maze):
 
     # Raycasting loop
     steps = 0
+    cell_x_prev, cell_y_prev = x, y
+    
     while True:
         steps += 1
         
@@ -68,12 +75,15 @@ def raycast(origin, direction, maze):
 
         # Check if the ray exits the maze without hitting a wall
         if cell_x < 0 or cell_y < 0 or cell_x >= maze.shape[1] or cell_y >=  maze.shape[0]:
-            return None, None, steps 
+            return None, None, None, steps 
 
         # Check for wall collision
         if maze[cell_y, cell_x] > 0:
-            return np.array([x*cell_size, y*cell_size]), (cell_y, cell_x), steps
+            face = cell_x_prev - cell_x, cell_y_prev - cell_y
+            return np.array([x*cell_size, y*cell_size]), (cell_y, cell_x), face, steps
 
+        cell_x_prev, cell_y_prev = cell_x, cell_y
+        
         # Calculate next grid crossing
         epsilon = 1e-10
         if dx > epsilon:    tx = (cell_x + 1 - x) / dx
@@ -126,7 +136,7 @@ class Camera:
         cell_prev = None
         start = position
         for i, angle in enumerate(angles):
-            end, cell, steps = raycast(start, angle, maze)
+            end, cell, face, steps = raycast(start, angle, maze)
             d = math.sqrt((start[0]-end[0])**2 + (start[1]-end[1])**2)
 
             self.rays[i] = start, end
@@ -141,6 +151,9 @@ class Camera:
             depth = abs(d) - abs(d) % (1/n)
             self.framebuffer[ymin:ymax,i] = cmap[maze[cell]]*(1 - depth)
 
+            # Basic lighting
+            if face == (-1,0):
+                self.framebuffer[ymin:ymax,i] = 0.75 * self.framebuffer[ymin:ymax,i]
             
             # Wall outline
             if outline:
@@ -202,11 +215,12 @@ if __name__ == "__main__":
 
     def update(frame=0):
         global position, direction
-        direction += math.radians(0.5)
+        direction += math.radians(1.0)
         camera.render(position, direction, maze, cmap, outline=True)
         rays.set_segments(camera.rays)
         framebuffer.set_data(camera.framebuffer)
 
+    # update(), fig.savefig("raycast.png")        
     ani = FuncAnimation(fig, update, frames=360, interval=1, repeat=True)
     # ani.save(filename="raycast.mp4", writer="ffmpeg", fps=30)
     plt.show()
