@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
     def update(frame=0):
         global position, direction
-        direction += math.radians(1.0)
+        direction += math.radians(0.5)
         camera.render(position, direction, maze, cmap, outline=True)
         rays.set_segments(camera.rays)
         framebuffer.set_data(camera.framebuffer)
