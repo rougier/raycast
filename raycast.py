@@ -152,21 +152,27 @@ class Camera:
             ymin = max (math.floor((0.5 - height/2)*n), 0)
             ymax = min (math.floor((0.5 + height/2)*n), n)
             depth = abs(d) - abs(d) % (1/n)
-            self.framebuffer[ymin:ymax,i] = cmap[maze[cell]]*(1 - depth)
-
-            # Basic lighting
-            if lighting and face == (-1,0):
-                self.framebuffer[ymin:ymax,i] = 0.75 * self.framebuffer[ymin:ymax,i]
+            darken = 1.0
             
-            # Wall outline
+            # Lighting
+            if lighting and face == (-1,0):
+                darken = 0.75*darken
+                
+            # Outline (vertical)
+            if outline and i > 0:
+                if np.any(self.cells[i-1] != self.cells[i]):
+                    darken = 0.75*darken
+                elif np.all(self.cells[i-1] == self.cells[i]) and face != face_prev:
+                    darken = 0.75*darken
+                        
+            self.framebuffer[ymin:ymax,i] = cmap[maze[cell]]*(1 - depth) * darken
+
+            # Outline (top and bottom)
             if outline:
-                if i > 0:
-                    if np.any(self.cells[i-1] != self.cells[i]):
-                        self.framebuffer[ymin:ymax,i] = self.framebuffer[ymin:ymax,i]*0.75
-                    if np.all(self.cells[i-1] == self.cells[i]) and face != face_prev:
-                        self.framebuffer[ymin:ymax,i] = self.framebuffer[ymin:ymax,i]*0.75
-                self.framebuffer[ymax-1:ymax,i] = self.framebuffer[ymax-1,i]*0.75 
-                self.framebuffer[ymin:ymin+1,i] = self.framebuffer[ymin,  i]*0.75
+                if ymax > 0:
+                    self.framebuffer[ymax-1:ymax,i] = self.framebuffer[ymax-1,i]*0.75
+                if ymin < n:
+                    self.framebuffer[ymin:ymin+1,i] = self.framebuffer[ymin,  i]*0.75
 
             face_prev = face
 
