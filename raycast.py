@@ -116,6 +116,7 @@ class Camera:
         self.fov = fov
         self.resolution = resolution
         self.depths = np.zeros(resolution)
+        self.values = np.zeros(resolution, dtype=int)
         self.rays = np.zeros((resolution,2,2))
         self.cells = np.zeros((resolution,2), dtype=int)
         self.framebuffer = np.zeros((resolution,resolution,3), dtype=np.ubyte)
@@ -127,9 +128,9 @@ class Camera:
         
         # Clear framebuffer by coloring sky (top half) and ground (bottom half)
         n = self.resolution
-        self.framebuffer[n//2:, :] = cmap[-2] * np.linspace(0.75, 1.00, n//2).reshape(n//2,1,1)
-        self.framebuffer[:n//2, :] = cmap[-1] * np.linspace(1.00, 0.65, n//2).reshape(n//2,1,1)
-
+        self.framebuffer[n//2:, :] = cmap[-1] * np.linspace(0.75, 1.00, n//2).reshape(n//2,1,1)
+        self.framebuffer[:n//2, :] = cmap[-2] * np.linspace(1.00, 0.65, n//2).reshape(n//2,1,1)
+        
         # Cast each ray and write them in the framebuffer
         angles = direction + np.radians(np.linspace(+self.fov/2,-self.fov/2, n, endpoint=True))
 
@@ -142,6 +143,7 @@ class Camera:
 
             self.rays[i] = start, end
             self.depths[i] = d
+            self.values[i] = maze[cell]
             self.cells[i] = cell
             
             # We should use a fovy instead of hardcoding height
@@ -177,34 +179,35 @@ if __name__ == "__main__":
     from matplotlib.collections import LineCollection
 
     maze = np.array([
-        [1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,1],
-        [1,0,4,4,0,0,3,3,0,1],
-        [1,0,4,0,0,0,0,3,0,1],
-        [1,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,1],
-        [1,0,6,0,0,0,0,5,0,1],
-        [1,0,6,6,0,0,5,5,0,1],
-        [1,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1]])
-    
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 4, 4, 0, 0, 3, 3, 0, 1],
+        [1, 0, 4, 0, 0, 0, 0, 3, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 6, 0, 0, 0, 0, 5, 0, 1],
+        [1, 0, 6, 6, 0, 0, 5, 5, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+
     cmap = {
-        -2 : np.array([100, 100, 255]), # sky
-        -1 : np.array([255, 255, 255]), # ground
+        -3 : np.array([200, 200, 255]), # ground (light blue)
+        -2 : np.array([255, 255, 255]), # ground (normal)
+        -1 : np.array([100, 100, 255]), # sky
          0 : np.array([255, 255, 255]), # empty
          1 : np.array([200, 200, 200]), # wall (light)
          2 : np.array([100, 100, 100]), # wall (dark)
          3 : np.array([255, 255,   0]), # wall (yellow)
          4 : np.array([  0,   0, 255]), # wall (blue)
          5 : np.array([255,   0,   0]), # wall (red)
-         6 : np.array([  0, 255,   0])  # wall (green)
+         6 : np.array([  0, 255,   0]), # wall (green)
     }
     maze_rgb = [cmap[i] for i in maze.ravel()]
     maze_rgb = np.array(maze_rgb).reshape(maze.shape[0], maze.shape[1], 3)
     
     radius = 0.05
     position, direction = (0.5, 0.5),  np.radians(0)
-    camera = Camera(fov = 60, resolution = 512)
+    camera = Camera(fov = 60, resolution = 256)
     
     fig = plt.figure(figsize=(10,5))
     ax1 = plt.axes([0.0,0.0,1/2,1.0], aspect=1, frameon=False)
@@ -215,7 +218,8 @@ if __name__ == "__main__":
                extent = [0.0, maze.shape[1]/max(maze.shape),
                          0.0, maze.shape[0]/max(maze.shape)])
     ax1.add_artist(Circle(position, radius, zorder=50, facecolor="white", edgecolor="black"))
-    rays = ax1.add_collection(LineCollection(camera.rays, color="C1", linewidth=0.5, zorder=30))
+    rays = ax1.add_collection(LineCollection([], color="C1", linewidth=0.5, zorder=30))
+    ends = ax1.scatter([], [], s=1, linewidth=0, color="black", zorder=40)    
     framebuffer = ax2.imshow(camera.framebuffer, interpolation="nearest",
                              origin="lower", extent = [0.0, 1.0, 0.0, 1.0])
 
@@ -224,9 +228,12 @@ if __name__ == "__main__":
         direction += math.radians(0.5)
         camera.render(position, direction, maze, cmap, outline=True)
         rays.set_segments(camera.rays)
+        ends.set_offsets(camera.rays[:,1,:])
+        
         framebuffer.set_data(camera.framebuffer)
 
-    # update(), fig.savefig("raycast.png")        
+    update()
+    # fig.savefig("raycast.png")        
     ani = FuncAnimation(fig, update, frames=360, interval=1, repeat=True)
     # ani.save(filename="raycast.mp4", writer="ffmpeg", fps=30)
     plt.show()
