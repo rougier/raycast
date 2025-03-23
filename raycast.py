@@ -131,12 +131,19 @@ class Camera:
         self.framebuffer[n//2:, :] = cmap[-1] * np.linspace(0.75, 1.00, n//2).reshape(n//2,1,1)
         self.framebuffer[:n//2, :] = cmap[-2] * np.linspace(1.00, 0.65, n//2).reshape(n//2,1,1)
         
-        # Cast each ray and write them in the framebuffer
-        angles = direction + np.radians(np.linspace(+self.fov/2,-self.fov/2, n, endpoint=True))
-
         cell_prev = None
         face_prev = None
         start = position
+
+        # Cast each ray and write them in the framebuffer
+        # angles = direction + np.radians(np.linspace(+self.fov/2,-self.fov/2, n, endpoint=True))
+        
+        # See https://www.scottsmitelli.com/articles/we-can-fix-your-raycaster/
+        D = 0.25 # projection distance
+        W = 2 * D * math.tan(np.radians(self.fov)/2)
+        X = W/2 * np.linspace(+1, -1, n, endpoint=True)
+        angles = direction + np.atan2(X, D)
+        
         for i, angle in enumerate(angles):
             end, cell, face, steps = raycast(start, angle, maze)
             d = math.sqrt((start[0]-end[0])**2 + (start[1]-end[1])**2)
