@@ -3,6 +3,14 @@
 # Released under the GNU General Public License 3
 """
 Maze simulator using the raycast Digital Differential Analyzer (DDA) algorithm.
+
+See:
+
+* Ray-Casting Tutorial For Game Development And Other Purposes - F. Permadi (1996)
+  https://permadi.com/1996/05/ray-casting-tutorial-table-of-contents/
+
+* Tangentially, we can fix your raycaster.- S. Mitelli (2024)
+  https://www.scottsmitelli.com/articles/we-can-fix-your-raycaster/
 """
 import math
 import numpy as np
@@ -137,7 +145,7 @@ class Camera:
 
         # Cast each ray and write them in the framebuffer
         # angles = direction + np.radians(np.linspace(+self.fov/2,-self.fov/2, n, endpoint=True))
-        
+
         # See https://www.scottsmitelli.com/articles/we-can-fix-your-raycaster/
         D = 0.25 # projection distance
         W = 2 * D * math.tan(np.radians(self.fov)/2)
@@ -154,7 +162,7 @@ class Camera:
             self.cells[i] = cell
             
             # We should use a fovy instead of hardcoding height
-            height = 0.09/(d*math.cos(direction - angle))
+            height = 0.1/(d*math.cos(direction - angle))
 
             ymin = max (math.floor((0.5 - height/2)*n), 0)
             ymax = min (math.floor((0.5 + height/2)*n), n)
