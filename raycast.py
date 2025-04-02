@@ -250,11 +250,10 @@ if __name__ == "__main__":
         camera.render(position, direction, maze, cmap, outline=True)
         rays.set_segments(camera.rays)
         ends.set_offsets(camera.rays[:,1,:])
-        
         framebuffer.set_data(camera.framebuffer)
 
     update()
     # fig.savefig("raycast.png")        
-    ani = FuncAnimation(fig, update, frames=360, interval=1, repeat=True)
+    # ani = FuncAnimation(fig, update, frames=360, interval=1, repeat=True)
     # ani.save(filename="raycast.mp4", writer="ffmpeg", fps=30)
     plt.show()
